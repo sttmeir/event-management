@@ -6,6 +6,7 @@ import com.mfortune.event.management.repository.EventRepository;
 import com.mfortune.event.management.repository.OrganizerRepository;
 import com.mfortune.event.management.repository.VisitorRepository;
 import com.mfortune.event.management.service.EventService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,12 +24,20 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public void createEvent(Event event) {
-        eventRepository.save(event);
+        if (event != null && event.getEventName() != null) {
+            eventRepository.save(event);
+        } else {
+            throw new IllegalArgumentException("Event or Event Name cannot be null");
+        }
     }
 
     @Override
     public void deleteEvent(Event event) {
-        eventRepository.delete(event);
+        if (event != null) {
+            eventRepository.delete(event);
+        } else {
+            throw new IllegalArgumentException("Event cannot be null");
+        }
     }
 
 
@@ -64,6 +73,12 @@ public class EventServiceImpl implements EventService {
         return event.getVisitorList().stream()
                 .sorted(Comparator.comparing(Visitor::getName))
                 .collect(Collectors.toList());
+    }
+
+    @PostConstruct
+    public void testMethod() {
+        List<Event> events = getEvents();
+        events.forEach(event -> System.out.println("Loaded Event: " + event.getEventName()));
     }
 
 }

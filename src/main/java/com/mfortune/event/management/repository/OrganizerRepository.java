@@ -8,4 +8,5 @@ public interface OrganizerRepository {
     void save(Organizer organizer);
     void delete(Organizer organizer);
     List<Organizer> findAll();
+
 }
