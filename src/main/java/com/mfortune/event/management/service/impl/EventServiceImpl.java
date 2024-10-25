@@ -1,84 +1,162 @@
 package com.mfortune.event.management.service.impl;
 
 import com.mfortune.event.management.domain.Event;
+import com.mfortune.event.management.domain.Organizer;
 import com.mfortune.event.management.domain.Visitor;
 import com.mfortune.event.management.repository.EventRepository;
 import com.mfortune.event.management.repository.OrganizerRepository;
 import com.mfortune.event.management.repository.VisitorRepository;
 import com.mfortune.event.management.service.EventService;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
-@Service
+
 @RequiredArgsConstructor
+@Service
+@Transactional
 public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final OrganizerRepository organizerRepository;
     private final VisitorRepository visitorRepository;
 
-    @Override
-    public void createEvent(Event event) {
-        if (event != null && event.getEventName() != null) {
-            eventRepository.save(event);
+    public Event createEvent(String eventName, int organizerId) {
+        Optional<Organizer> organizer = organizerRepository.findById(organizerId);
+
+        if (organizer.isPresent()) {
+            Event newEvent = new Event();
+            newEvent.setEventName(eventName);
+            newEvent.setOrganizer(organizer.get());
+            return eventRepository.save(newEvent);
         } else {
-            throw new IllegalArgumentException("Event or Event Name cannot be null");
+            throw new IllegalArgumentException("Organizer not found with id: " + organizerId);
         }
     }
 
-    @Override
-    public void deleteEvent(Event event) {
-        if (event != null) {
-            eventRepository.delete(event);
-        } else {
-            throw new IllegalArgumentException("Event cannot be null");
-        }
-    }
+    /**
+     * Add a visitor to an existing event.
+     * @param eventId ID of the event.
+     * @param visitorId ID of the visitor.
+     * @return Updated Event with the new visitor.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Event addVisitorToEvent(int eventId, int visitorId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+        Visitor visitor = visitorRepository.findById(visitorId)
+                .orElseThrow(() -> new IllegalArgumentException("Visitor not found with id: " + visitorId));
 
-
-    @Override
-    public List<Event> getEvents() {
-        return eventRepository.findAll();
-    }
-
-    @Override
-    public void updateEvent(Event event) {
-
-    }
-
-    @Override
-    public void registerVisitorForEvent(Visitor visitor, Event event) {
         if (event.getVisitorList() == null) {
-            event.setVisitorList(new ArrayList<>());
+            event.setVisitorList(new ArrayList<>()); // Initialize visitor list if null
         }
-        event.getVisitorList().add(visitor);
 
-        if (visitor.getEventsAttended() == null) {
-            visitor.setEventsAttended(new ArrayList<>());
-        }
-        visitor.getEventsAttended().add(event);
-
-        visitorRepository.save(visitor);
-//        eventRepository.save(event);
-
-        System.out.println("Visitor " + visitor.getName() + " registered for event " + event.getEventName());
+        event.getVisitorList().add(visitor); // Add visitor to the list
+        return eventRepository.save(event);
     }
 
-    public List<Visitor> getVisitorsSorted(Event event) {
-        return event.getVisitorList().stream()
-                .sorted(Comparator.comparing(Visitor::getName))
-                .collect(Collectors.toList());
+    /**
+     * Remove a visitor from an event.
+     * @param eventId ID of the event.
+     * @param visitorId ID of the visitor.
+     * @return Updated Event after the visitor is removed.
+     */
+    public Event removeVisitorFromEvent(int eventId, int visitorId) {
+        Optional<Event> event = eventRepository.findById(eventId);
+        Optional<Visitor> visitor = visitorRepository.findById(visitorId);
+
+        if (event.isPresent() && visitor.isPresent()) {
+            Event eventEntity = event.get();
+            Visitor visitorEntity = visitor.get();
+
+            eventEntity.getVisitorList().remove(visitorEntity);
+            visitorEntity.setEvent(null);
+
+            visitorRepository.save(visitorEntity);
+            return eventRepository.save(eventEntity);
+        } else {
+            throw new IllegalArgumentException("Event or Visitor not found with given IDs.");
+        }
     }
 
-    @PostConstruct
-    public void testMethod() {
-        List<Event> events = getEvents();
-        events.forEach(event -> System.out.println("Loaded Event: " + event.getEventName()));
+    /**
+     * Find an event by its ID.
+     * @param eventId ID of the event.
+     * @return Event found by its ID.
+     */
+    @Transactional(readOnly = true)
+    public Event findEventById(int eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+    }
+
+    /**
+     * List all events for a specific organizer.
+     * @param organizerId ID of the organizer.
+     * @return List of Events.
+     */
+    @Transactional(readOnly = true)
+    public List<Event> findEventsByOrganizer(int organizerId) {
+        Optional<Organizer> organizer = organizerRepository.findById(organizerId);
+
+        if (organizer.isPresent()) {
+            return organizer.get().getEvents();
+        } else {
+            throw new IllegalArgumentException("Organizer not found with id: " + organizerId);
+        }
+    }
+
+    /**
+     * Delete an event by its ID.
+     * @param eventId ID of the event.
+     */
+    public void deleteEvent(int eventId) {
+        Optional<Event> event = eventRepository.findById(eventId);
+
+        if (event.isPresent()) {
+            eventRepository.delete(event.get());
+        } else {
+            throw new IllegalArgumentException("Event not found with id: " + eventId);
+        }
+    }
+
+    /**
+     * Add a new visitor to the system.
+     * @param visitorName Name of the visitor.
+     * @return Created Visitor.
+     */
+    public Visitor addVisitor(String visitorName) {
+        Visitor visitor = new Visitor();
+        visitor.setName(visitorName);
+        return visitorRepository.save(visitor);
+    }
+
+    /**
+     * Create a new organizer in the system.
+     * @param organizerName Name of the organizer.
+     * @return Created Organizer.
+     */
+    public Organizer addOrganizer(String organizerName) {
+        Organizer organizer = new Organizer();
+        organizer.setName(organizerName);
+        return organizerRepository.save(organizer);
+    }
+
+    /**
+     * Delete a visitor from the system by their ID.
+     * @param visitorId ID of the visitor.
+     */
+    public void deleteVisitor(int visitorId) {
+        Optional<Visitor> visitor = visitorRepository.findById(visitorId);
+
+        if (visitor.isPresent()) {
+            visitorRepository.delete(visitor.get());
+        } else {
+            throw new IllegalArgumentException("Visitor not found with id: " + visitorId);
+        }
     }
 
 }
