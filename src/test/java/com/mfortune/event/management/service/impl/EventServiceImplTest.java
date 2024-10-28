@@ -181,6 +181,7 @@ public class EventServiceImplTest {
         eventServiceImpl.deleteEvent(0);
 
         verify(eventRepository).delete(mockEvent);
+
     }
 
     @Test
