@@ -8,6 +8,8 @@ import com.mfortune.event.management.repository.OrganizerRepository;
 import com.mfortune.event.management.repository.VisitorRepository;
 import com.mfortune.event.management.service.EventService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +25,39 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final OrganizerRepository organizerRepository;
     private final VisitorRepository visitorRepository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+
+    public void sendMessage(String topic, String message) {
+        kafkaTemplate.send(topic, message);
+    }
+
+    // Event Updates via Messaging
+    // messages in the format: (e.g., "123:New Event Name")
+    @KafkaListener(topics = "event-updates", groupId = "event-management-service-group")
+    public void listen(String message) {
+        String[] parts = message.split(":");
+
+        if (parts.length == 2) {
+            try {
+                int eventId = Integer.parseInt(parts[0].trim());
+                String newEventName = parts[1].trim();
+
+                Event event = eventRepository.findById(eventId)
+                        .orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+                event.setEventName(newEventName);
+                eventRepository.save(event);
+                System.out.println("Updated event: " + event);
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid eventId format in message: " + message);
+            }
+        } else {
+            System.err.println("Message format is incorrect: " + message);
+        }
+    }
 
     public Event createEvent(String eventName, int organizerId) {
         Optional<Organizer> organizer = organizerRepository.findById(organizerId);
-
+        
         if (organizer.isPresent()) {
             Event newEvent = new Event();
             newEvent.setEventName(eventName);

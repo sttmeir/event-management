@@ -26,6 +26,9 @@ public class Event {
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL)
     private List<Visitor> visitorList;
 
-
+    public Event(int id, String eventName) {
+        this.id = id;
+        this.eventName = eventName;
+    }
 }
 

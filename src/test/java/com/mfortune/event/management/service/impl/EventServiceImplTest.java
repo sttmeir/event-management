@@ -12,11 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 public class EventServiceImplTest {
@@ -27,12 +30,37 @@ public class EventServiceImplTest {
     OrganizerRepository organizerRepository;
     @Mock
     VisitorRepository visitorRepository;
+    @Mock
+    private KafkaTemplate<String, String> kafkaTemplate;
     @InjectMocks
     EventServiceImpl eventServiceImpl;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void testSendMessage() {
+        // Given
+        String topic = "event-updates";
+        String message = "123:New Event Name";
+
+        // When
+        eventServiceImpl.sendMessage(topic, message);
+
+        // Then
+        verify(kafkaTemplate).send(topic, message);
+    }
+
+    @Test
+    void testListenWithCorrectMessageFormat() {
+        String message = "1:New Event Name";
+        when(eventRepository.findById(1)).thenReturn(Optional.of(new Event(1, "Old Event Name")));
+
+        eventServiceImpl.listen(message);
+
+        verify(eventRepository, times(1)).save(any(Event.class));
     }
 
     @Test
@@ -45,7 +73,18 @@ public class EventServiceImplTest {
 
         Event result = eventServiceImpl.createEvent("eventName", 0);
 
-        Assertions.assertEquals(mockEvent, result);
+        assertEquals(mockEvent, result);
+    }
+
+    @Test
+    void testCreateEventWithNonExistentOrganizer() {
+        when(organizerRepository.findById(1)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventServiceImpl.createEvent("New Event", 1)
+        );
+        assertEquals("Organizer not found with id: 1", exception.getMessage());
     }
 
 
@@ -60,10 +99,21 @@ public class EventServiceImplTest {
 
         Event result = eventServiceImpl.addVisitorToEvent(0, 0);
 
-        Assertions.assertEquals(0, result.getId());
-        Assertions.assertEquals("eventName", result.getEventName());
-        Assertions.assertEquals("OrganizerName", result.getOrganizer().getName());
-        Assertions.assertEquals("VisitorName", result.getVisitorList().get(0).getName());
+        assertEquals(0, result.getId());
+        assertEquals("eventName", result.getEventName());
+        assertEquals("OrganizerName", result.getOrganizer().getName());
+        assertEquals("VisitorName", result.getVisitorList().get(0).getName());
+    }
+
+    @Test
+    void testAddVisitorToEventWithNonExistentEvent() {
+        when(eventRepository.findById(1)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventServiceImpl.addVisitorToEvent(1, 1)
+        );
+        assertEquals("Event not found with id: 1", exception.getMessage());
     }
 
     @Test
@@ -86,16 +136,26 @@ public class EventServiceImplTest {
         verify(eventRepository).save(mockEvent);
     }
 
+    @Test
+    void testRemoveVisitorFromEventWithNonExistentEvent() {
+        when(eventRepository.findById(1)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventServiceImpl.removeVisitorFromEvent(1, 1)
+        );
+        assertEquals("Event or Visitor not found with given IDs.", exception.getMessage());
+    }
 
     @Test
     void testFindEventById_ThrowsExceptionWhenNotFound() {
         when(eventRepository.findById(any(Integer.class))).thenReturn(Optional.empty());
 
-        Exception exception = Assertions.assertThrows(IllegalArgumentException.class, () -> {
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             eventServiceImpl.findEventById(0);
         });
 
-        Assertions.assertEquals("Event not found with id: 0", exception.getMessage());
+        assertEquals("Event not found with id: 0", exception.getMessage());
     }
 
 
@@ -109,8 +169,8 @@ public class EventServiceImplTest {
 
         List<Event> result = eventServiceImpl.findEventsByOrganizer(0);
 
-        Assertions.assertEquals(1, result.size());
-        Assertions.assertEquals(mockEvent, result.get(0));
+        assertEquals(1, result.size());
+        assertEquals(mockEvent, result.get(0));
     }
 
     @Test
@@ -123,6 +183,16 @@ public class EventServiceImplTest {
         verify(eventRepository).delete(mockEvent);
     }
 
+    @Test
+    void testDeleteEventWithNonExistentId() {
+        when(eventRepository.findById(1)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> eventServiceImpl.deleteEvent(1)
+        );
+        assertEquals("Event not found with id: 1", exception.getMessage());
+    }
 
     @Test
     void testAddVisitor() {
@@ -131,7 +201,7 @@ public class EventServiceImplTest {
 
         Visitor result = eventServiceImpl.addVisitor("visitorName");
 
-        Assertions.assertEquals(mockVisitor, result);
+        assertEquals(mockVisitor, result);
     }
 
     @Test
@@ -141,7 +211,7 @@ public class EventServiceImplTest {
 
         Organizer result = eventServiceImpl.addOrganizer("organizerName");
 
-        Assertions.assertEquals(mockOrganizer, result);
+        assertEquals(mockOrganizer, result);
     }
 
     @Test
