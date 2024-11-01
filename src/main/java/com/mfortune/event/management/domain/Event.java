@@ -1,10 +1,8 @@
 package com.mfortune.event.management.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
@@ -21,9 +19,12 @@ public class Event {
 
     @ManyToOne
     @JoinColumn(name = "organizer_id")
+    @JsonBackReference
+    @ToString.Exclude
     private Organizer organizer;
 
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL)
+    @ToString.Exclude
     private List<Visitor> visitorList;
 
     public Event(int id, String eventName) {

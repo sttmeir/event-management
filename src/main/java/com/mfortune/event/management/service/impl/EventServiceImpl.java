@@ -68,6 +68,15 @@ public class EventServiceImpl implements EventService {
         }
     }
 
+    @Override
+    public Event updateEventName(int eventId, String newEventName) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + eventId));
+        event.setEventName(newEventName);
+        return eventRepository.save(event);
+    }
+
+
     /**
      * Add a visitor to an existing event.
      * @param eventId ID of the event.
@@ -154,40 +163,5 @@ public class EventServiceImpl implements EventService {
         }
     }
 
-    /**
-     * Add a new visitor to the system.
-     * @param visitorName Name of the visitor.
-     * @return Created Visitor.
-     */
-    public Visitor addVisitor(String visitorName) {
-        Visitor visitor = new Visitor();
-        visitor.setName(visitorName);
-        return visitorRepository.save(visitor);
-    }
-
-    /**
-     * Create a new organizer in the system.
-     * @param organizerName Name of the organizer.
-     * @return Created Organizer.
-     */
-    public Organizer addOrganizer(String organizerName) {
-        Organizer organizer = new Organizer();
-        organizer.setName(organizerName);
-        return organizerRepository.save(organizer);
-    }
-
-    /**
-     * Delete a visitor from the system by their ID.
-     * @param visitorId ID of the visitor.
-     */
-    public void deleteVisitor(int visitorId) {
-        Optional<Visitor> visitor = visitorRepository.findById(visitorId);
-
-        if (visitor.isPresent()) {
-            visitorRepository.delete(visitor.get());
-        } else {
-            throw new IllegalArgumentException("Visitor not found with id: " + visitorId);
-        }
-    }
 
 }

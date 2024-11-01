@@ -26,14 +26,24 @@ public class EventServiceImplTest {
 
     @Mock
     EventRepository eventRepository;
+
     @Mock
     OrganizerRepository organizerRepository;
+
     @Mock
     VisitorRepository visitorRepository;
+
     @Mock
     private KafkaTemplate<String, String> kafkaTemplate;
+
     @InjectMocks
     EventServiceImpl eventServiceImpl;
+
+    @InjectMocks
+    OrganizerServiceImpl organizerServiceImpl;
+
+    @InjectMocks
+    VisitorServiceImpl visitorServiceImpl;
 
     @BeforeEach
     void setUp() {
@@ -200,7 +210,7 @@ public class EventServiceImplTest {
         Visitor mockVisitor = new Visitor(0, "visitorName", null);
         when(visitorRepository.save(any(Visitor.class))).thenReturn(mockVisitor);
 
-        Visitor result = eventServiceImpl.addVisitor("visitorName");
+        Visitor result = visitorServiceImpl.addVisitor("visitorName");
 
         assertEquals(mockVisitor, result);
     }
@@ -210,7 +220,7 @@ public class EventServiceImplTest {
         Organizer mockOrganizer = new Organizer(0, "organizerName", new ArrayList<>());
         when(organizerRepository.save(any(Organizer.class))).thenReturn(mockOrganizer);
 
-        Organizer result = eventServiceImpl.addOrganizer("organizerName");
+        Organizer result = organizerServiceImpl.addOrganizer("organizerName");
 
         assertEquals(mockOrganizer, result);
     }
@@ -220,10 +230,12 @@ public class EventServiceImplTest {
         Visitor mockVisitor = new Visitor(0, "VisitorName", new Event(1, "eventName", new Organizer(1, "OrganizerName", null), new ArrayList<>()));
         when(visitorRepository.findById(0)).thenReturn(Optional.of(mockVisitor));
 
-        eventServiceImpl.deleteVisitor(0);
+        visitorServiceImpl.deleteVisitor(0);
 
         verify(visitorRepository).delete(mockVisitor);
     }
+
+
 }
 
 //Generated with love by TestMe :) Please raise issues & feature requests at: https://weirddev.com/forum#!/testme
