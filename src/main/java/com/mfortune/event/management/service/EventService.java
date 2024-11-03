@@ -1,9 +1,6 @@
 package com.mfortune.event.management.service;
 
 import com.mfortune.event.management.domain.Event;
-import com.mfortune.event.management.domain.Organizer;
-import com.mfortune.event.management.domain.Visitor;
-
 import java.util.List;
 
 public interface EventService {
