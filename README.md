@@ -10,7 +10,7 @@ This project is structured as follows:
     - `LoggingAspect` - Handles cross-cutting concerns like logging.
 - **config**:
     - `KafkaConfig` - Configures Kafka for message handling.
-    - `SecurityConfig` - Sets up application security with JWT authentication.
+    - `SecurityConfig` - Sets up application security in a basic way for testing.
 - **constant**:
     - `StringConstants` - Contains constant string values used across the application.
 - **domain**:
